@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" id="pwa-manifest">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SX Network">
+    <meta name="theme-color" content="#050a14">
+    <link rel="apple-touch-icon" id="apple-touch-icon">
+    <title>SX - Network</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Firebase SDK para o app de Dieta -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+    <style>
+        body { background-color: #050a14; color: white; overflow-x: hidden; font-family: 'Segoe UI', sans-serif; }
+        .sx-card { background: #112240; border-radius: 16px; border: 1px solid #1d2d50; }
+        .logo-s { color: #ff0000; font-weight: 900; font-size: 3.5rem; line-height: 1; }
+        .logo-x { color: #ffffff; font-weight: 900; font-size: 3.5rem; line-height: 1; }
+        .btn-vermelho { background-color: #ff0000 !important; transition: 0.3s; color: white; font-weight: 800; border: none; }
+        .capa-container { height: 280px; width: 100%; position: relative; background: #0a192f; overflow: hidden; border-bottom: 4px solid #ff0000; }
+        .capa-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .btn-editar-capa { position: absolute; bottom: 15px; right: 15px; background: rgba(0,0,0,0.8); color: white; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; z-index: 10; border: 1px solid #ff0000; }
+        .sidebar { transition: 0.3s; width: 280px; background: #0a192f; border-right: 1px solid #ff0000; height: 100vh; position: fixed; left: -280px; z-index: 100; display: flex; flex-direction: column; }
+        .sidebar.open { left: 0; }
+        .sidebar-content { flex: 1; overflow-y: auto; padding: 1rem; scrollbar-width: thin; }
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 90; }
+        .overlay.active { display: block; }
+        .video-feed { width: 100%; height: 100vh; background: black; object-fit: cover; display: block; filter: saturate(1.25) contrast(1.2) brightness(1.06); }
+        .hidden { display: none; }
+        #tela-aguardando { display: none; position: fixed; inset: 0; background: #050a14; z-index: 200; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; }
+        #tela-aguardando.show { display: flex; }
+        .spinner-sx { width: 80px; height: 80px; border: 6px solid #1d2d50; border-top: 6px solid #ff0000; border-radius: 50%; animation: spin-sx 0.8s linear infinite; margin-bottom: 2rem; }
+        @keyframes spin-sx { to { transform: rotate(360deg); } }
+        .dots-anim::after { content: ''; animation: dots 1.5s steps(4, end) infinite; }
+        @keyframes dots { 0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'} 100%{content:''} }
+        .nav-rapida { display: flex; gap: 4px; padding: 7px 5px; background: #050a14; border-bottom: 1px solid #1d2d50; align-items: center; }
+        .btn-nav-item { background: #112240; border: 1px solid #1d2d50; padding: 7px 2px; border-radius: 50px; white-space: nowrap; font-size: 11px; font-weight: 800; text-transform: uppercase; transition: 0.3s; cursor: pointer; flex: 1; min-width: 0; text-align: center; overflow: hidden; text-overflow: ellipsis; }
+        .btn-nav-item:hover { border-color: #ff0000; color: #ff0000; }
+        .tvsx-tv { color: #ffffff; font-weight: 900; }
+        .tvsx-s  { color: #ff0000; font-weight: 900; }
+        .tvsx-x  { color: #ffffff; font-weight: 900; }
+        .btn-curtir { transition: transform 0.2s, filter 0.4s, color 0.4s; cursor: pointer; color: #ff0000; font-size: 2rem; display: flex; align-items: center; gap: 6px; line-height: 1; padding: 4px 6px; border-radius: 8px; flex-shrink: 0; }
+        .btn-curtir:active { transform: scale(1.4); }
+        .num-curtidas { color: white !important; font-weight: 900; font-size: 1.1rem; min-width: 20px; display: inline-block; }
+        .heart-badge { display: inline-flex !important; align-items: center; gap: 6px; padding: 5px 10px 5px 8px; border-radius: 10px; font-weight: 900; white-space: nowrap; line-height: 1.2; position: relative; overflow: hidden; flex-shrink: 0; }
+        .heart-badge::before, .heart-badge::after { content: ''; position: absolute; top: 0; width: 4px; height: 100%; }
+        .heart-badge::before { left: 0; border-radius: 10px 0 0 10px; }
+        .heart-badge::after  { right: 0; border-radius: 0 10px 10px 0; }
+        .badge-shine { position: absolute; top: 0; left: -70%; width: 35%; height: 100%; background: rgba(255,255,255,0.18); transform: skewX(-20deg); animation: badge-shine 3s infinite; pointer-events: none; }
+        @keyframes badge-shine { 0%{left:-70%} 55%{left:130%} 100%{left:130%} }
+        .heart-badge-ouro { background: linear-gradient(110deg, #7a5200, #FFD700 40%, #ffe066 55%, #c8860a 75%, #7a5200); border: 1.5px solid #ffe566; box-shadow: 0 2px 12px rgba(255,210,0,0.45); color: #3b2600 !important; }
+        .heart-badge-ouro::before, .heart-badge-ouro::after { background: linear-gradient(180deg, #fff7a0, #c8860a, #fff7a0); }
+        .heart-badge-prata { background: linear-gradient(110deg, #555, #bbb 35%, #eee 55%, #999 75%, #555); border: 1.5px solid #ddd; box-shadow: 0 2px 12px rgba(180,180,180,0.4); color: #1a1a1a !important; }
+        .heart-badge-prata::before, .heart-badge-prata::after { background: linear-gradient(180deg, #ffffff, #aaaaaa, #ffffff); }
+        .heart-badge-bronze { background: linear-gradient(110deg, #4a1e00, #CD7F32 35%, #e8a96a 55%, #a05a10 75%, #4a1e00); border: 1.5px solid #e0a060; box-shadow: 0 2px 12px rgba(180,100,30,0.4); color: #2a0e00 !important; }
+        .heart-badge-bronze::before, .heart-badge-bronze::after { background: linear-gradient(180deg, #f0c080, #7a3d00, #f0c080); }
+        .badge-emoji { font-size: 1.4rem; line-height: 1; flex-shrink: 0; }
+        .badge-valor { font-size: 0.9rem; font-weight: 900; letter-spacing: 0.3px; }
+        .heart-pop { position: fixed; pointer-events: none; z-index: 9999; font-size: 1.4rem; animation: heart-fly 1.1s ease-out forwards; user-select: none; line-height: 1; }
+        @keyframes heart-fly { 0%{transform:translateY(0) translateX(var(--x)) scale(0.5) rotate(var(--r));opacity:1} 60%{opacity:1} 100%{transform:translateY(-130px) translateX(var(--x2)) scale(1.3) rotate(var(--r2));opacity:0} }
+        .comment-box { background: rgba(0,0,0,0.2); border: 1px solid #1d2d50; border-radius: 8px; color: white; }
+        .btn-upload-elegant { background: linear-gradient(45deg, #112240, #1d2d50); border: 1px solid #ff0000; color: #fff; padding: 12px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: bold; transition: all 0.3s; }
+        #area-veiculos { display: none; }
+        .cls-header { background:#061427; padding:20px; text-align:center; font-size:22px; font-weight:bold; border-bottom: 2px solid #ff0000; }
+        .cls-container { max-width:900px; margin:auto; padding:20px; }
+        .cls-btn { background:#00aa00; color:white; border:none; padding:12px 22px; border-radius:8px; cursor:pointer; font-weight:bold; }
+        .cls-btn:hover { background:#00cc00; }
+        .cls-btn:disabled { background:#666; cursor:not-allowed; }
+        .cls-btn-novo { background:linear-gradient(45deg,#ff4444,#cc0000); margin-bottom:20px; }
+        .upload-btn-cls { background:linear-gradient(45deg,#00aa00,#00cc00); color:white; padding:12px 22px; border-radius:8px; cursor:pointer; display:inline-block; font-weight:bold; margin:10px 0; border:none; font-size:15px; transition:transform 0.2s; }
+        .upload-btn-cls:hover { transform:scale(1.05); }
+        .form-box-cls { background:#10264d; padding:25px; border-radius:12px; margin:20px 0; display:none; }
+        .cls-input, .cls-textarea, .cls-select { width:100%; padding:12px; margin:8px 0; border-radius:8px; border:none; background:#1a3a6d; color:white; box-sizing:border-box; }
+        .cls-input::placeholder, .cls-textarea::placeholder { color:#ddd; }
+        .cls-input:focus, .cls-textarea:focus, .cls-select:focus { background:#2a4a8d; outline:none; }
+        .cls-label { color:white; font-weight:bold; margin:10px 0 5px 0; display:block; }
+        .preview-cls { display:flex; gap:10px; flex-wrap:wrap; margin:12px 0; }
+        .preview-cls img { width:100px; height:80px; object-fit:cover; border-radius:8px; cursor:pointer; transition:transform 0.3s; }
+        .preview-cls img:hover { transform:scale(1.5); }
+        .preview-cls video { width:100px; height:80px; object-fit:cover; border-radius:8px; }
+        .midia-grid-cls { display:flex; gap:10px; flex-wrap:wrap; margin-top:15px; }
+        .midia-grid-cls img { max-width:140px; height:110px; object-fit:cover; border-radius:8px; cursor:pointer; transition:transform 0.3s; }
+        .midia-grid-cls img:hover { transform:scale(1.2); }
+        .midia-grid-cls video { max-width:140px; height:110px; object-fit:cover; border-radius:8px; }
+        .cls-status { padding:12px; margin:12px 0; border-radius:8px; font-weight:bold; text-align:center; }
+        .cls-status-ok { background:#004400; } .cls-status-erro { background:#440000; }
+        .anuncio-cls { background:#10264d; padding:20px; border-radius:12px; margin:20px 0; }
+        .anuncio-cls h3 { margin:0 0 10px 0; }
+        .badge-publicado { background:#004400; color:#00ff88; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:bold; display:inline-block; margin-bottom:8px; }
+        #area-vestir { display: none; width: 100%; background: #050a14; }
+        .calc-wrapper { max-width: 400px; margin: 0 auto; padding: 15px; }
+        .calc-header { background: #112240; padding: 20px; text-align: center; border-radius: 20px 20px 0 0; border-bottom: 2px solid #ff0000; }
+        .calc-header h1 { margin: 0; color: #ff0000; font-size: 1.3rem; }
+        .calc-main { background: #112240; padding: 20px; }
+        .calc-display { background: linear-gradient(135deg, #004d00, #003300); padding: 20px; border-radius: 15px; margin-bottom: 20px; }
+        .calc-display-label { color: #00FF00; text-align: center; font-size: 13px; margin-bottom: 6px; }
+        .calc-display-valor { color: #00FF00; font-size: 48px; font-weight: bold; text-align: center; font-family: monospace; }
+        .calc-numpad { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+        .calc-numpad button { padding: 18px; font-size: 28px; border-radius: 12px; border: none; background: #1d2d50; color: white; cursor: pointer; transition: background 0.2s; }
+        .calc-numpad button:active { background: #ff0000; }
+        .calc-btn-limpar { margin-top: 12px; background: linear-gradient(135deg, #CC0000, #8B0000); color: white; padding: 14px; font-size: 18px; border-radius: 12px; border: none; width: 100%; cursor: pointer; font-weight: bold; }
+        .calc-btn-adicionar { margin-top: 12px; background: linear-gradient(135deg, #007bff, #0056b3); color: white; padding: 18px; font-size: 22px; border-radius: 12px; border: none; width: 100%; cursor: pointer; font-weight: bold; }
+        .calc-total { background: linear-gradient(135deg, #764ba2, #4B0082); color: white; padding: 22px; font-size: 28px; text-align: center; font-weight: bold; }
+        .calc-lista-section { background: #112240; padding: 20px; border-radius: 0 0 20px 20px; border-top: 1px solid #1d2d50; }
+        .calc-lista-section h3 { color: white; margin: 0 0 12px 0; }
+        .sx-card-cadastro { background: #112240; border-radius: 15px; border: 1px solid #1d2d50; }
+        #btn-flutuante-admin { display: none; position: fixed; bottom: 24px; right: 20px; background: linear-gradient(45deg, #ff0000, #8800cc); color: white; font-size: 13px; font-weight: 900; padding: 14px 18px; border-radius: 50px; box-shadow: 0 4px 20px rgba(255,0,0,0.5); cursor: pointer; z-index: 80; border: 2px solid rgba(255,255,255,0.2); text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s; }
+        #btn-flutuante-admin:hover { transform: scale(1.05); box-shadow: 0 6px 30px rgba(255,0,0,0.7); }
+        .prof-card { background: #112240; border-radius: 15px; border: 1px solid #1d2d50; }
+        .s-red { color: #ff0000; } .x-white { color: #ffffff; }
+        .alerta-email { display:none; background:#4a0000; border:1px solid #ff0000; color:#ff6060; border-radius:8px; padding:12px 16px; margin-bottom:12px; font-size:14px; font-weight:bold; text-align:center; }
+        .alerta-email.visivel { display:block; }
+        .input-erro { border-color:#ff0000 !important; }
+        .post-card { background: #112240; border-radius: 16px; border: 1px solid #1d2d50; margin-bottom: 24px; overflow: hidden; }
+        .post-card-header { padding: 16px 16px 0 16px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .post-card-header-inner { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 6px; min-width: 0; }
+        .post-card-header-badge { flex: 1; display: flex; justify-content: center; min-width: 0; overflow: hidden; padding: 0 2px; }
+        .post-card-texto { padding: 0 16px 12px 16px; color: #e5e7eb; font-size: 1rem; }
+        .post-card-footer { padding: 16px; border-top: 1px solid #1f2f4d; }
+        .video-wrapper { position: relative; width: 100%; height: 100vh; background: #000; overflow: hidden; }
+        .video-skeleton { position: absolute; inset: 0; background: linear-gradient(90deg, #112240 25%, #1d2d50 50%, #112240 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; display: flex; align-items: center; justify-content: center; z-index: 1; }
+        .video-skeleton svg { opacity: 0.4; }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+        #area-tvsx { display: none; position: fixed; top: 0; left: 0; z-index: 9998; background: #000; }
+        #area-tvsx.show { display: block; }
+        @media screen and (orientation: landscape) { #area-tvsx.show { width: 100vw; height: 100vh; transform: none; } }
+        @media screen and (orientation: portrait) { #area-tvsx.show { width: 100vh; height: 100vw; top: 0; left: 0; transform-origin: top left; transform: rotate(90deg) translateX(0%) translateY(-100%); } }
+        #tvsx-iframe { width: 100%; height: 100%; border: none; display: block; }
+        #btn-fechar-tvsx { display: none; position: fixed; z-index: 9999; background: rgba(0,0,0,0.85); border: 2px solid #ff0000; color: #ff0000; font-size: 17px; font-weight: 900; width: 38px; height: 38px; border-radius: 50%; align-items: center; justify-content: center; cursor: pointer; line-height: 1; }
+        #btn-fechar-tvsx.show { display: flex; }
+        @media screen and (orientation: landscape) { #btn-fechar-tvsx.show { top: 12px; right: 12px; bottom: auto; left: auto; } }
+        @media screen and (orientation: portrait) { #btn-fechar-tvsx.show { bottom: 12px; right: 12px; top: auto; left: auto; } }
+        .upload-progress-bar { width: 100%; height: 6px; background: #1d2d50; border-radius: 3px; overflow: hidden; margin-top: 8px; display: none; }
+        .upload-progress-fill { height: 100%; background: linear-gradient(90deg, #ff0000, #ff6600); border-radius: 3px; transition: width 0.3s; width: 0%; }
+        .ad-slideshow { position: relative; width: 100%; overflow: hidden; }
+        .ad-slideshow-track { display: flex; transition: transform 0.5s ease; }
+        .ad-slideshow-track img { width: 100%; flex-shrink: 0; object-fit: cover; display: block; }
+        .ad-slide-dots { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
+        .ad-slide-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.45); cursor: pointer; transition: background 0.2s; }
+        .ad-slide-dot.active { background: #fff; }
+        .ad-slide-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.45); color: #fff; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+        .ad-slide-nav.prev { left: 8px; }
+        .ad-slide-nav.next { right: 8px; }
+    </style>
+</head>
+<body>
+
+    <div id="tela-aguardando">
+        <div class="spinner-sx"></div>
+        <div class="flex items-center mb-4">
+            <span class="logo-s" style="font-size:2.5rem;">S</span>
+            <span class="logo-x" style="font-size:2.5rem;">X</span>
+        </div>
+        <h2 style="font-size:1.4rem;font-weight:900;color:#fff;margin-bottom:10px;">Cadastro enviado com sucesso! ✅</h2>
+        <p style="color:#94a3b8;font-size:0.95rem;line-height:1.7;max-width:320px;">
+            Você será liberado e entrará na <strong style="color:white;">SX Network</strong> automaticamente<span class="dots-anim"></span>
+        </p>
+        <p style="color:#475569;font-size:0.8rem;margin-top:24px;">Aguardando aprovação do monitor</p>
+    </div>
+
+    <div id="area-tvsx">
+        <iframe id="tvsx-iframe" src="" allow="autoplay; fullscreen" allowfullscreen></iframe>
+    </div>
+    <button id="btn-fechar-tvsx" onclick="fecharTVSX()">✕</button>
+
+    <div id="overlay" class="overlay" onclick="toggleMenu()"></div>
+
+    <aside id="sidebar" class="sidebar">
+        <div class="p-4 flex justify-between items-center border-b border-gray-800">
+            <h2 class="text-2xl font-bold text-red-600">MENU <span class="text-white">SX</span></h2>
+            <button onclick="toggleMenu()" class="text-3xl">&times;</button>
+        </div>
+        <div class="sidebar-content">
+            <nav class="space-y-4">
+                <button onclick="voltarHome()" class="w-full text-left p-4 hover:bg-red-900 rounded-lg transition font-bold flex items-center gap-3">🏠 Feed Global</button>
+                <button id="btn-me-perfil" class="w-full text-left p-4 hover:bg-red-900 rounded-lg transition font-bold flex items-center gap-3">👤 Minha Página</button>
+                <hr class="border-gray-800">
+                <p class="text-gray-500 text-xs uppercase px-4 mb-2">Comunidade SX</p>
+                <div id="lista-usuarios-menu" class="space-y-2"></div>
+            </nav>
+        </div>
+    </aside>
+
+    <div id="login-box" class="hidden min-h-screen flex items-center justify-center p-4">
+        <div class="sx-card-cadastro p-8 w-full max-w-md shadow-2xl border-t-4 border-red-600">
+            <div class="mb-6 flex justify-center items-center">
+                <span class="logo-s">S</span><span class="logo-x">X</span>
+            </div>
+            <div id="formulario-cadastro">
+                <div style="background: linear-gradient(135deg, #0a192f, #112240); border: 1px solid #ff0000; border-radius: 12px; padding: 16px 18px; margin-bottom: 20px; text-align: center;">
+                    <p style="color: #ffffff; font-size: 1rem; font-weight: 900; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Seja bem vindo(a) a Rede Social</p>
+                    <p style="color: #ff4444; font-size: 0.88rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; margin: 0;">⚠️ Após clicar em Cadastrar, continue na tela — não saia até entrar no aplicativo!</p>
+                </div>
+                <div id="alerta-email-duplicado" class="alerta-email">
+                    ⚠️ Este e-mail já está cadastrado.<br>
+                    <span style="font-size:12px;color:#ffaaaa;">Cada e-mail só pode ter uma conta na SX.</span>
+                </div>
+                <input type="text" id="n" placeholder="Nome Completo" class="w-full p-3 mb-3 rounded bg-[#0a192f] border border-gray-700 text-white outline-none focus:border-red-600">
+                <input type="email" id="e" placeholder="Seu melhor E-mail" class="w-full p-3 mb-3 rounded bg-[#0a192f] border border-gray-700 text-white outline-none focus:border-red-600" oninput="limparErroEmail()">
+                <input type="tel" id="t" placeholder="Telefone com DDD" class="w-full p-3 mb-3 rounded bg-[#0a192f] border border-gray-700 text-white outline-none focus:border-red-600">
+                <label class="text-xs text-gray-400">Escolha sua Foto de Perfil:</label>
+                <label style="display:flex;align-items:center;gap:10px;margin:6px 0 16px 0;cursor:pointer;">
+                    <span id="label-foto-btn" style="background:#ff0000;color:white;font-weight:700;padding:7px 18px;border-radius:50px;font-size:13px;white-space:nowrap;">Sua Foto</span>
+                    <span id="label-foto-nome" style="color:#9ca3af;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Nenhum arquivo selecionado</span>
+                    <input type="file" id="f" accept="image/*" class="hidden" onchange="document.getElementById('label-foto-nome').innerText=this.files[0]?this.files[0].name:'Nenhum arquivo selecionado'">
+                </label>
+                <div class="upload-progress-bar" id="progress-cadastro">
+                    <div class="upload-progress-fill" id="progress-cadastro-fill"></div>
+                </div>
+                <button onclick="cadastrar()" id="btn-cadastrar" class="w-full p-3 rounded font-bold transition" style="background:#ff0000;">CADASTRAR</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="main-box" class="hidden">
+        <header class="bg-[#112240] p-4 flex justify-between items-center border-b border-red-900 sticky top-0 z-50">
+            <button onclick="toggleMenu()" class="text-3xl text-red-600">☰</button>
+            <div onclick="voltarHome()" class="cursor-pointer flex items-center">
+                <span class="text-red-600 font-black text-3xl">S</span><span class="text-white font-black text-3xl">X</span>
+            </div>
+            <div id="perfil-status"></div>
+        </header>
+
+        <div id="nav-feed-global" class="nav-rapida sticky top-[73px] z-40">
+            <button onclick="voltarHome()" id="btn-nav-feed" class="btn-nav-item" style="border-color:#ff0000;color:#ff0000;">Postar</button>
+            <button onclick="abrirVeiculos()" id="btn-nav-veiculos" class="btn-nav-item">Veículos</button>
+            <button onclick="abrirTVSX()" id="btn-nav-tvsx" class="btn-nav-item">
+                <span class="tvsx-tv">TV </span><span class="tvsx-s">S</span><span class="tvsx-x">X</span>
+            </button>
+            <button onclick="abrirVestir()" id="btn-nav-vestir" class="btn-nav-item">Compras</button>
+            <button onclick="abrirChofer()" id="btn-nav-lojas" class="btn-nav-item">Chofer</button>
+        </div>
+
+        <div id="area-perfil" class="hidden w-full mb-6 relative">
+            <button id="btn-confirmar-capa" class="hidden" onclick="confirmarUploadCapa()">✅ SALVAR PARA TODOS</button>
+            <div class="capa-container">
+                <img id="img-capa-view" src="https://images.unsplash.com/photo-1557683316-973673baf926" class="capa-img">
+                <label id="label-capa" class="btn-editar-capa hidden">
+                    <span>📷 Mudar Capa</span>
+                    <input type="file" id="input-capa" accept="image/*" class="hidden" onchange="previaCapa(this)">
+                </label>
+            </div>
+            <div class="mt-4 text-center">
+                <h1 id="nome-perfil-view" class="text-4xl font-black uppercase text-white"></h1>
+            </div>
+        </div>
+
+        <main class="max-w-2xl mx-auto" style="overflow-x:hidden;">
+            <div id="caixa-post" class="sx-card p-4 mb-6 border-t-4 border-red-600 mx-2">
+                <div class="flex gap-3 mb-4">
+                    <div id="mini-foto-post"></div>
+                    <textarea id="txt" placeholder="Escreva algo" class="w-full bg-transparent text-white placeholder-white text-lg focus:ring-0 resize-none outline-none font-medium" rows="2"></textarea>
+                </div>
+                <div class="flex flex-col gap-3">
+                    <label class="btn-upload-elegant cursor-pointer">
+                        <span id="file-name" class="flex items-center gap-2">✨ ADICIONAR MÍDIA INCRÍVEL</span>
+                        <input type="file" id="midia" accept="image/*,video/*" class="hidden" onchange="document.getElementById('file-name').innerText = '✓ ' + this.files[0].name">
+                    </label>
+                    <div class="upload-progress-bar" id="progress-post">
+                        <div class="upload-progress-fill" id="progress-post-fill"></div>
+                    </div>
+                    <button onclick="postar()" id="btn-post" class="w-full btn-vermelho py-3 rounded-xl font-black uppercase">Publicar</button>
+                </div>
+            </div>
+            <div id="feed"></div>
+        </main>
+
+        <div id="area-veiculos">
+            <div class="cls-header">Classificados <span style="color:red;">S</span><span style="color:white;">X</span> — Veículos</div>
+            <div class="cls-container">
+                <div id="cls-status" class="cls-status cls-status-ok">⏳ Iniciando...</div>
+                <button id="btnNovo" class="cls-btn cls-btn-novo" onclick="clsAbrirForm()" disabled>🚗 NOVO ANÚNCIO</button>
+                <div class="form-box-cls" id="cls-formulario">
+                    <label class="cls-label">📂 Categoria:</label>
+                    <select id="cls-categoria" class="cls-select"><option value="">Selecione...</option><option value="Carro">🚗 Carro</option><option value="Moto">🏍️ Moto</option></select>
+                    <label class="cls-label">🚙 Nome do Veículo:</label><input type="text" id="cls-nome" class="cls-input" placeholder="Honda Civic">
+                    <label class="cls-label">📅 Ano:</label><input type="number" id="cls-ano" class="cls-input" placeholder="2020">
+                    <label class="cls-label">📍 Bairro:</label><input type="text" id="cls-bairro" class="cls-input" placeholder="Copacabana">
+                    <label class="cls-label">🌎 Estado:</label><input type="text" id="cls-estado" class="cls-input" placeholder="RJ">
+                    <label class="cls-label">💰 Preço (R$):</label><input type="number" id="cls-preco" class="cls-input" placeholder="85000">
+                    <label class="cls-label">📱 WhatsApp (sem 55):</label><input type="text" id="cls-whatsapp" class="cls-input" placeholder="21987654321">
+                    <label class="cls-label">📝 Descrição:</label><textarea id="cls-descricao" class="cls-textarea" rows="3" placeholder="Descreva seu veículo..."></textarea>
+                    <label class="cls-label">📸 Fotos e Vídeos (1-6):</label>
+                    <input type="file" id="cls-midia" multiple accept="image/*,video/*" style="display:none;">
+                    <label for="cls-midia" class="upload-btn-cls">📤 ESCOLHER FOTOS/VÍDEOS</label>
+                    <div class="preview-cls" id="cls-preview"></div>
+                    <div id="cls-contador" style="color:#ddd;">0/6 arquivos</div>
+                    <div class="upload-progress-bar" id="progress-cls" style="margin-top:10px;">
+                        <div class="upload-progress-fill" id="progress-cls-fill"></div>
+                    </div>
+                    <button onclick="clsAnunciar()" id="cls-btnPublicar" class="cls-btn" disabled style="margin-top:12px;">🚀 PUBLICAR ANÚNCIO</button>
+                </div>
+                <div id="cls-listaAnuncios"></div>
+            </div>
+        </div>
+
+        <div id="area-vestir">
+            <div class="calc-wrapper">
+                <div class="calc-header">
+                    <h1>🛒 Calculadora de Compras</h1>
+                </div>
+                <div class="calc-main">
+                    <div class="calc-display">
+                        <div class="calc-display-label">VALOR DIGITADO</div>
+                        <div class="calc-display-valor" id="calc-display">R$ 0,00</div>
+                    </div>
+                    <div class="calc-numpad">
+                        <button onclick="calcDigitar('1')">1</button>
+                        <button onclick="calcDigitar('2')">2</button>
+                        <button onclick="calcDigitar('3')">3</button>
+                        <button onclick="calcDigitar('4')">4</button>
+                        <button onclick="calcDigitar('5')">5</button>
+                        <button onclick="calcDigitar('6')">6</button>
+                        <button onclick="calcDigitar('7')">7</button>
+                        <button onclick="calcDigitar('8')">8</button>
+                        <button onclick="calcDigitar('9')">9</button>
+                        <button onclick="calcDigitar('00')">00</button>
+                        <button onclick="calcDigitar('0')">0</button>
+                        <button onclick="calcApagarUltimo()">⌫</button>
+                    </div>
+                    <button class="calc-btn-limpar" onclick="calcLimparTudo()">🗑️ LIMPAR TUDO</button>
+                    <button class="calc-btn-adicionar" onclick="calcAdicionarPreco()">✓ ADICIONAR</button>
+                </div>
+                <div class="calc-total" id="calc-total">TOTAL: R$ 0,00</div>
+                <div class="calc-lista-section">
+                    <h3>🛍️ Carrinho (<span id="calc-count">0</span>)</h3>
+                    <div id="calc-lista"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <button id="btn-flutuante-admin" onclick="abrirMonitorAnuncios()">📢 Anúncios</button>
+
+    <script>
+        // ══ CLOUDINARY ══
+        const CLD_CLOUD = "dxqobkits";
+        const CLD_PRESET = "sx_videos";
+
+        function uploadCloudinary(file, folder, onProgress) {
+            return new Promise((resolve, reject) => {
+                const isVideo = file.type.startsWith("video/");
+                const endpoint = `https://api.cloudinary.com/v1_1/${CLD_CLOUD}/${isVideo ? "video" : "image"}/upload`;
+                const formData = new FormData();
+                formData.append("file", file);
+                formData.append("upload_preset", CLD_PRESET);
+                if (folder) formData.append("folder", folder);
+                const xhr = new XMLHttpRequest();
+                xhr.upload.addEventListener("progress", (e) => {
+                    if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+                });
+                xhr.addEventListener("load", () => {
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        data.secure_url ? resolve(data.secure_url) : reject(new Error(data.error?.message || "Erro Cloudinary"));
+                    } catch(e) { reject(new Error("Resposta inválida")); }
+                });
+                xhr.addEventListener("error", () => reject(new Error("Falha na conexão")));
+                xhr.open("POST", endpoint);
+                xhr.send(formData);
+            });
+        }
+
+        // ── CALCULADORA ──
+        let calcValorAtual = "", calcTotal = 0, calcItens = [];
+        function calcDigitar(n) { calcValorAtual += n; calcAtualizar(); }
+        function calcApagarUltimo() { calcValorAtual = calcValorAtual.slice(0, -1); calcAtualizar(); }
+        function calcAtualizar() { document.getElementById("calc-display").innerText = "R$ " + ((parseInt(calcValorAtual) || 0) / 100).toFixed(2).replace(".", ","); }
+        function calcAdicionarPreco() {
+            if (!calcValorAtual) return;
+            let p = parseInt(calcValorAtual) / 100; calcTotal += p; calcItens.push(p); calcValorAtual = ""; calcAtualizar();
+            document.getElementById("calc-total").innerText = "TOTAL: R$ " + calcTotal.toFixed(2).replace(".", ",");
+            document.getElementById("calc-count").innerText = calcItens.length;
+            let listaEl = document.getElementById("calc-lista");
+            let item = document.createElement("div"); item.style.cssText = "padding:6px 0;border-bottom:1px solid #1d2d50;color:#e5e7eb;font-size:15px;";
+            item.innerText = "Item " + calcItens.length + ": R$ " + p.toFixed(2).replace(".", ","); listaEl.appendChild(item);
+        }
+        function calcLimparTudo() {
+            calcValorAtual = ""; calcTotal = 0; calcItens = []; calcAtualizar();
+            document.getElementById("calc-total").innerText = "TOTAL: R$ 0,00";
+            document.getElementById("calc-count").innerText = 0;
+            document.getElementById("calc-lista").innerHTML = "";
+        }
+
+        // ── SLIDESHOW ──
+        const _adSlides = {};
+        window._adGoSlide = function(uid, i) {
+            const s = _adSlides[uid]; if (!s) return; s.idx = i;
+            const track = document.getElementById('adtrack-' + uid);
+            if (track) track.style.transform = 'translateX(-' + (i * 100) + '%)';
+            document.querySelectorAll('#addots-' + uid + ' .ad-slide-dot').forEach((d, j) => d.classList.toggle('active', j === i));
+        };
+        window._adPrev = function(uid) { const s = _adSlides[uid]; if (!s) return; _adGoSlide(uid, (s.idx - 1 + s.srcs.length) % s.srcs.length); };
+        window._adNext = function(uid) { const s = _adSlides[uid]; if (!s) return; _adGoSlide(uid, (s.idx + 1) % s.srcs.length); };
+        function iniciarSlideshowAd(uid, srcs, intervalo) {
+            if (_adSlides[uid] && _adSlides[uid].timer) clearInterval(_adSlides[uid].timer);
+            if (!document.getElementById('adtrack-' + uid)) return;
+            const timer = setInterval(() => _adNext(uid), intervalo || 3000);
+            _adSlides[uid] = { idx: 0, srcs, timer }; _adGoSlide(uid, 0);
+        }
+
+        function setProgress(barId, fillId, pct, show) {
+            const bar = document.getElementById(barId), fill = document.getElementById(fillId);
+            if (!bar || !fill) return;
+            bar.style.display = show ? 'block' : 'none';
+            fill.style.width = pct + '%';
+        }
+    </script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, query, where, getDocs, addDoc, onSnapshot,
+                 orderBy, doc, updateDoc, getDoc, arrayUnion, serverTimestamp }
+                 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCXTQ932v0Amnbtha01BzFsUfUZKnwYQIA",
+            authDomain: "chofer-522be.firebaseapp.com",
+            projectId: "chofer-522be",
+            storageBucket: "chofer-522be.firebasestorage.app",
+            messagingSenderId: "81306033578",
+            appId: "1:81306033578:web:0c3688bc455a51b972dfd3"
+        };
+        const app = initializeApp(firebaseConfig);
+        const fsdb = getFirestore(app, "cadastro");
+        const auth = getAuth(app);
+
+        let userLogado=null, idLogado=null, unsubFeed=null, arquivoCapaPendente=null;
+        let curtidasNestaSessao=new Set();
+        let clsArquivos=[], clsIsSubmitting=false;
+        let isAdmin=false, anunciosAtivos=[];
+        let unsubAprovacao=null;
+        const videoCache=new Set();
+        let videoAtual=null;
+
+        // ══════════════════════════════════════════════════════
+        // ── ÁUDIO — 12 SONS SINCRONIZADOS COM O MONITOR ──────
+        // ══════════════════════════════════════════════════════
+        let _audioCtx = null;
+        function getAudioCtx() {
+            if (!_audioCtx || _audioCtx.state === 'closed') {
+                _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return _audioCtx;
+        }
+
+        async function tocarSomAnuncio(id) {
+            if (!id || id === 'nenhum') return;
+            try {
+                const ctx = getAudioCtx();
+                if (ctx.state === 'suspended') await ctx.resume();
+                const now = ctx.currentTime;
+                const master = ctx.createGain();
+                master.gain.value = 0.75;
+                const compressor = ctx.createDynamicsCompressor();
+                compressor.threshold.value = -6; compressor.knee.value = 3; compressor.ratio.value = 4;
+                compressor.attack.value = 0.001; compressor.release.value = 0.1;
+                master.connect(compressor); compressor.connect(ctx.destination);
+
+                function osc(freq, type, startT, dur, vol, freqEnd) {
+                    const o = ctx.createOscillator(), g = ctx.createGain();
+                    o.connect(g); g.connect(master);
+                    o.type = type || 'sine';
+                    o.frequency.setValueAtTime(freq, startT);
+                    if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, startT + dur);
+                    g.gain.setValueAtTime(0, startT);
+                    g.gain.linearRampToValueAtTime(vol, startT + 0.02);
+                    g.gain.exponentialRampToValueAtTime(0.001, startT + dur);
+                    o.start(startT); o.stop(startT + dur + 0.05);
+                }
+
+                function noise(startT, dur, freq, q, vol, freqEnd) {
+                    const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
+                    const data = buf.getChannelData(0);
+                    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1);
+                    const src = ctx.createBufferSource();
+                    const filt = ctx.createBiquadFilter();
+                    const g = ctx.createGain();
+                    src.buffer = buf;
+                    filt.type = 'bandpass';
+                    filt.frequency.setValueAtTime(freq, startT);
+                    if (freqEnd) filt.frequency.exponentialRampToValueAtTime(freqEnd, startT + dur);
+                    filt.Q.value = q || 1;
+                    g.gain.setValueAtTime(0, startT);
+                    g.gain.linearRampToValueAtTime(vol, startT + 0.03);
+                    g.gain.exponentialRampToValueAtTime(0.001, startT + dur);
+                    src.connect(filt); filt.connect(g); g.connect(master);
+                    src.start(startT); src.stop(startT + dur + 0.05);
+                }
+
+                const plays = {
+                    crystal: () => {
+                        const freqs = [523, 1047, 1568, 2093, 2637];
+                        freqs.forEach((f, i) => osc(f, 'sine', now + i * 0.08, 2.0 - i * 0.2, 0.4 - i * 0.06));
+                        [3136, 4186].forEach((f, i) => osc(f, 'sine', now + i * 0.05, 1.2, 0.12));
+                    },
+                    fanfarra: () => {
+                        const melody = [392, 523, 659, 784, 659, 784, 1047];
+                        const times  = [0, 0.12, 0.24, 0.36, 0.52, 0.62, 0.74];
+                        const durs   = [0.2, 0.2, 0.2, 0.28, 0.18, 0.18, 0.9];
+                        melody.forEach((f, i) => {
+                            osc(f, 'sawtooth', now + times[i], durs[i], 0.35);
+                            osc(f * 1.5, 'sine', now + times[i], durs[i], 0.12);
+                        });
+                        osc(80, 'sine', now, 0.3, 0.6, 30);
+                        noise(now, 0.15, 2000, 0.5, 0.25);
+                    },
+                    cash: () => {
+                        const coinFreqs = [1800, 2200, 1600, 2000, 2400, 1900, 2100];
+                        const coinTimes = [0, 0.07, 0.14, 0.21, 0.3, 0.38, 0.47];
+                        coinFreqs.forEach((f, i) => {
+                            osc(f, 'square', now + coinTimes[i], 0.25, 0.28);
+                            osc(f * 0.5, 'sine', now + coinTimes[i], 0.3, 0.15);
+                        });
+                        osc(2637, 'sine', now + 0.58, 1.0, 0.4);
+                        osc(3136, 'sine', now + 0.58, 0.8, 0.2);
+                    },
+                    magic: () => {
+                        osc(300, 'sine', now, 0.8, 0.5, 2400);
+                        osc(600, 'sine', now + 0.1, 0.7, 0.3, 1800);
+                        for (let i = 0; i < 8; i++) {
+                            const t = now + Math.random() * 0.7;
+                            const f = 1000 + Math.random() * 3000;
+                            osc(f, 'sine', t, 0.3, 0.15);
+                        }
+                        osc(2637, 'sine', now + 0.8, 1.2, 0.45);
+                        osc(3136, 'sine', now + 0.85, 1.0, 0.25);
+                    },
+                    arcade: () => {
+                        const notes = [262, 330, 392, 523, 784, 659, 784, 1047];
+                        const ts    = [0, 0.08, 0.16, 0.24, 0.32, 0.44, 0.52, 0.60];
+                        notes.forEach((f, i) => {
+                            osc(f, 'square', now + ts[i], 0.12, 0.3);
+                            osc(f * 2, 'square', now + ts[i], 0.1, 0.08);
+                        });
+                        [523, 659, 784].forEach(f => osc(f, 'square', now + 0.75, 0.5, 0.2));
+                    },
+                    notification: () => {
+                        osc(880, 'sine', now,        0.18, 0.5);
+                        osc(1320,'sine', now,        0.18, 0.25);
+                        osc(1047,'sine', now + 0.22, 0.28, 0.55);
+                        osc(1568,'sine', now + 0.22, 0.28, 0.3);
+                        osc(1047,'sine', now + 0.55, 0.8,  0.2);
+                        osc(1568,'sine', now + 0.55, 0.7,  0.1);
+                    },
+                    harp: () => {
+                        const chord = [261, 329, 392, 523, 659, 784, 1047, 1318];
+                        chord.forEach((f, i) => osc(f, 'sine', now + i * 0.09, 2.2 - i * 0.15, 0.38 - i * 0.03));
+                    },
+                    tribal: () => {
+                        [0, 0.25, 0.5, 0.75].forEach(t => {
+                            osc(80, 'sine', now + t, 0.22, 0.6, 35);
+                            noise(now + t, 0.15, 150, 0.5, 0.3);
+                        });
+                        [0.125, 0.375, 0.625].forEach(t => {
+                            noise(now + t, 0.1, 3000, 0.3, 0.4);
+                            osc(200, 'triangle', now + t, 0.1, 0.3);
+                        });
+                        [0,0.0625,0.125,0.1875,0.25,0.3125,0.375,0.4375,
+                         0.5,0.5625,0.625,0.6875,0.75,0.8125].forEach(t => {
+                            noise(now + t, 0.05, 8000, 0.5, 0.15);
+                        });
+                    },
+                    woosh_up: () => {
+                        noise(now, 1.2, 200, 0.3, 0.5, 6000);
+                        osc(100, 'sawtooth', now, 1.0, 0.4, 1200);
+                        osc(150, 'sine', now + 0.2, 0.8, 0.3, 800);
+                        [523, 659, 784, 1047].forEach((f, i) => osc(f, 'triangle', now + 1.0 + i * 0.08, 0.6, 0.35));
+                    },
+                    piano_jingle: () => {
+                        [261, 329, 392].forEach(f => osc(f, 'triangle', now, 0.5, 0.35));
+                        [392, 494, 587].forEach(f => osc(f, 'triangle', now + 0.5, 0.5, 0.35));
+                        [440, 523, 659].forEach(f => osc(f, 'triangle', now + 1.0, 0.5, 0.35));
+                        [523, 659, 784].forEach(f => osc(f, 'triangle', now + 1.5, 1.0, 0.3));
+                    },
+                    synth_chord: () => {
+                        const chord = [196, 247, 294, 392, 494];
+                        chord.forEach((f, i) => {
+                            osc(f, 'sawtooth', now + i * 0.04, 1.5, 0.28);
+                            osc(f * 2, 'sine', now + i * 0.04, 1.3, 0.1);
+                        });
+                        const lfo = ctx.createOscillator();
+                        const lfoGain = ctx.createGain();
+                        lfo.frequency.value = 6;
+                        lfoGain.gain.value = 0.15;
+                        lfo.connect(lfoGain);
+                        lfoGain.connect(master.gain);
+                        lfo.start(now); lfo.stop(now + 1.5);
+                    },
+                };
+
+                const fn = plays[id];
+                if (fn) fn();
+            } catch(e) {
+                console.warn('Erro ao tocar som do anúncio:', e);
+            }
+        }
+
+        // ── Observer de som dos anúncios ──
+        let _adSomObserver = null;
+        function registrarObserverSomAnuncios() {
+            if (_adSomObserver) _adSomObserver.disconnect();
+            _adSomObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const s = entry.target.getAttribute('data-som');
+                        if (s && s !== 'nenhum') tocarSomAnuncio(s);
+                    }
+                });
+            }, { threshold: 0.4 });
+            document.querySelectorAll('[data-ad-card="true"]').forEach(card => _adSomObserver.observe(card));
+        }
+
+        // ── Cookies / LocalStorage ──
+        function setCookie(n,v,d){try{const e=new Date();e.setTime(e.getTime()+(d*86400000));document.cookie=n+'='+encodeURIComponent(v)+';expires='+e.toUTCString()+';path=/;SameSite=Lax';}catch(e){}}
+        function getCookie(n){try{const m=document.cookie.match(new RegExp('(?:^|; )'+n+'=([^;]*)'));return m?decodeURIComponent(m[1]):null;}catch(e){return null;}}
+        function deleteCookie(n){try{document.cookie=n+'=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax';}catch(e){}}
+        function salvarEmailLocal(email){try{localStorage.setItem('sx_email',email);localStorage.setItem('sx_email_backup',email);localStorage.setItem('sx_logado','1');sessionStorage.setItem('sx_email',email);setCookie('sx_email',email,3650);setCookie('sx_email_bk',email,3650);}catch(e){}}
+        function lerEmailLocal(){try{return localStorage.getItem('sx_email')||localStorage.getItem('sx_email_backup')||sessionStorage.getItem('sx_email')||getCookie('sx_email')||getCookie('sx_email_bk')||null;}catch(e){return null;}}
+        function limparEmailLocal(){try{localStorage.removeItem('sx_email');localStorage.removeItem('sx_email_backup');localStorage.removeItem('sx_logado');sessionStorage.removeItem('sx_email');deleteCookie('sx_email');deleteCookie('sx_email_bk');}catch(e){}}
+
+        let somDesbloqueado = false;
+        function desbloquearSom(){if(somDesbloqueado)return;somDesbloqueado=true;document.querySelectorAll('video.video-feed').forEach(v=>{v.muted=false;if(!v.paused)v.play().catch(()=>{});});}
+        document.addEventListener('click',desbloquearSom,{passive:true});
+        document.addEventListener('touchstart',desbloquearSom,{passive:true});
+
+        // ── Observers de vídeo ──
+        const videoObserver=new IntersectionObserver(entries=>{
+            entries.forEach(entry=>{
+                const video=entry.target;
+                if(document.getElementById('area-tvsx').classList.contains('show'))return;
+                if(entry.isIntersecting){
+                    document.querySelectorAll('video.video-feed').forEach(v=>{if(v!==video)v.pause();});
+                    videoAtual=video;
+                    if(video.readyState<4){video.preload='auto';video.load();}
+                    video.muted=false;
+                    video.play().catch(()=>{video.muted=true;video.play().catch(()=>{});});
+                    const sk=video.parentElement?.querySelector('.video-skeleton');
+                    if(sk){const hide=()=>{sk.style.opacity='0';setTimeout(()=>{if(sk)sk.style.display='none';},300);video.removeEventListener('canplay',hide);};video.readyState>=2?hide():video.addEventListener('canplay',hide);}
+                } else {
+                    video.pause();
+                }
+            });
+        },{threshold:0.4});
+
+        const preloadObserver=new IntersectionObserver(entries=>{
+            entries.forEach(entry=>{
+                if(entry.isIntersecting){
+                    const v=entry.target;v.preload='auto';v.load();
+                    if(!videoCache.has(v.src)){videoCache.add(v.src);const l=document.createElement('link');l.rel='preload';l.as='video';l.href=v.src;document.head.appendChild(l);}
+                    preloadObserver.unobserve(v);
+                }
+            });
+        },{rootMargin:'3000px 0px',threshold:0});
+
+        const adVideoObserver=new IntersectionObserver(entries=>{
+            entries.forEach(entry=>{
+                const v=entry.target;
+                if(entry.isIntersecting){v.muted=true;v.playsInline=true;if(v.readyState===0)v.load();const t=()=>{const p=v.play();if(p)p.catch(()=>{v.muted=true;v.play().catch(()=>{});});};v.readyState>=2?t():v.addEventListener('canplay',t,{once:true});}else{v.pause();}
+            });
+        },{threshold:0.2,rootMargin:'100px 0px'});
+
+        function registrarVideo(v){v.preload='none';v.muted=false;preloadObserver.observe(v);videoObserver.observe(v);}
+
+        // ── TV SX ──
+        const TVSX_URL='https://sadministrador.github.io/tvsx/index10.html';
+        window.abrirTVSX=()=>{
+            if(document.getElementById('sidebar').classList.contains('open'))toggleMenu();
+            document.querySelectorAll('video.video-feed').forEach(v=>{v.pause();v.muted=true;});videoAtual=null;
+            const iframe=document.getElementById('tvsx-iframe');if(iframe.src!==TVSX_URL)iframe.src=TVSX_URL;
+            document.getElementById('area-tvsx').classList.add('show');document.getElementById('btn-fechar-tvsx').classList.add('show');
+            if(screen.orientation&&screen.orientation.lock)screen.orientation.lock('landscape').catch(()=>{});
+            resetNav();document.getElementById('btn-nav-tvsx').style.borderColor='#ff0000';document.getElementById('btn-nav-tvsx').style.color='#ff0000';
+        };
+        window.fecharTVSX=()=>{
+            document.getElementById('tvsx-iframe').src='';document.getElementById('area-tvsx').classList.remove('show');document.getElementById('btn-fechar-tvsx').classList.remove('show');
+            if(screen.orientation&&screen.orientation.unlock){try{screen.orientation.unlock();}catch(e){}}
+            resetNav();document.getElementById('btn-nav-feed').style.borderColor='#ff0000';document.getElementById('btn-nav-feed').style.color='#ff0000';
+        };
+
+        const MONITOR_URL='sx-monitor.html';
+        window.limparErroEmail=()=>{document.getElementById('alerta-email-duplicado').classList.remove('visivel');document.getElementById('e').classList.remove('input-erro');};
+        function mostrarErroEmail(){document.getElementById('alerta-email-duplicado').classList.add('visivel');document.getElementById('e').classList.add('input-erro');document.getElementById('e').focus();}
+
+        async function inicializar(){
+            const emailSalvo=lerEmailLocal();
+            if(!emailSalvo){document.getElementById('login-box').classList.remove('hidden');return;}
+            try{
+                const q=query(collection(fsdb,"usuariosAprovados"),where("email","==",emailSalvo));
+                const snap=await getDocs(q);
+                if(!snap.empty){
+                    const dados=snap.docs[0].data();
+                    const liberado=dados.status==="aprovado"||dados.status==="ativo";
+                    if(liberado){idLogado=snap.docs[0].id;userLogado=dados;salvarEmailLocal(emailSalvo);entrarNaPlataforma();}
+                    else{mostrarTelaAguardando();ouvirAprovacaoEmTempoReal(emailSalvo);}
+                }else{limparEmailLocal();document.getElementById('login-box').classList.remove('hidden');}
+            }catch(e){document.getElementById('login-box').classList.remove('hidden');}
+        }
+
+        function mostrarTelaAguardando(){document.getElementById('login-box').classList.add('hidden');document.getElementById('main-box').classList.add('hidden');document.getElementById('tela-aguardando').classList.add('show');}
+        function esconderTelaAguardando(){document.getElementById('tela-aguardando').classList.remove('show');}
+
+        function ouvirAprovacaoEmTempoReal(email){
+            if(unsubAprovacao)unsubAprovacao();
+            const q=query(collection(fsdb,"usuariosAprovados"),where("email","==",email));
+            unsubAprovacao=onSnapshot(q,snap=>{
+                if(snap.empty)return;
+                const d=snap.docs[0],dados=d.data();
+                const liberado=dados.status==="aprovado"||dados.status==="ativo";
+                if(liberado){if(unsubAprovacao){unsubAprovacao();unsubAprovacao=null;}idLogado=d.id;userLogado=dados;salvarEmailLocal(email);esconderTelaAguardando();entrarNaPlataforma();}
+            });
+        }
+
+        window.cadastrar=async()=>{
+            const nome=document.getElementById('n').value.trim();
+            const email=document.getElementById('e').value.trim().toLowerCase();
+            const tel=document.getElementById('t').value.trim();
+            const file=document.getElementById('f').files[0];
+            const btn=document.getElementById('btn-cadastrar');
+            if(!nome)return alert("Digite seu nome completo!");
+            if(!email)return alert("Digite seu e-mail!");
+            if(!tel)return alert("Digite seu telefone!");
+            if(!file)return alert("Por favor, suba sua foto de perfil!");
+            btn.disabled=true;btn.innerText="ENVIANDO FOTO...";
+            setProgress('progress-cadastro','progress-cadastro-fill',0,true);
+            try{
+                const snapExiste=await getDocs(query(collection(fsdb,"usuariosAprovados"),where("email","==",email)));
+                if(!snapExiste.empty){mostrarErroEmail();btn.disabled=false;btn.innerText="CADASTRAR";setProgress('progress-cadastro','progress-cadastro-fill',0,false);return;}
+                btn.innerText="ENVIANDO FOTO... 0%";
+                const fotoUrl=await uploadCloudinary(file,"sx_perfis",(pct)=>{btn.innerText=`ENVIANDO FOTO... ${pct}%`;setProgress('progress-cadastro','progress-cadastro-fill',pct,true);});
+                btn.innerText="SALVANDO CADASTRO...";
+                const docRef=await addDoc(collection(fsdb,"usuariosAprovados"),{nome,email,tel,foto:fotoUrl,status:"aprovado"});
+                salvarEmailLocal(email);idLogado=docRef.id;userLogado={nome,email,tel,foto:fotoUrl,status:"aprovado"};
+                setProgress('progress-cadastro','progress-cadastro-fill',0,false);
+                entrarNaPlataforma();
+            }catch(e){alert("Erro ao enviar cadastro: "+e.message);btn.disabled=false;btn.innerText="CADASTRAR";setProgress('progress-cadastro','progress-cadastro-fill',0,false);}
+        };
+
+        function entrarNaPlataforma(){
+            if(unsubAprovacao){unsubAprovacao();unsubAprovacao=null;}
+            isAdmin=(userLogado.email==="admin@sx.com");
+            document.getElementById('login-box').classList.add('hidden');
+            document.getElementById('tela-aguardando').classList.remove('show');
+            document.getElementById('main-box').classList.remove('hidden');
+            document.getElementById('perfil-status').innerHTML=`<img src="${userLogado.foto}" class="w-10 h-10 rounded-full object-cover border-2 border-red-600">`;
+            document.getElementById('mini-foto-post').innerHTML=`<img src="${userLogado.foto}" class="w-12 h-12 rounded-full object-cover border-2 border-red-600 flex-shrink-0">`;
+            document.getElementById('btn-me-perfil').onclick=()=>verPerfil(idLogado);
+            if(isAdmin)document.getElementById('btn-flutuante-admin').style.display='flex';
+            carregarUsuariosMenu();carregarAnunciosAtivos().then(()=>carregarFeed());
+            try{signInAnonymously(auth);}catch(e){}clsIniciar();
+            onSnapshot(doc(fsdb,"usuariosAprovados",idLogado),(snap)=>{
+                if(!snap.exists())return;const dados=snap.data();if(!dados)return;
+                const status=dados.status||"";
+                if(status==="excluido"||status==="bloqueado"){limparEmailLocal();document.getElementById('main-box').classList.add('hidden');document.getElementById('formulario-cadastro').classList.remove('hidden');document.getElementById('login-box').classList.remove('hidden');}
+            });
+        }
+
+        function resetNav(){['btn-nav-feed','btn-nav-veiculos','btn-nav-tvsx','btn-nav-vestir','btn-nav-lojas'].forEach(id=>{const el=document.getElementById(id);if(el){el.style.borderColor='';el.style.color='';}}); }
+        function esconderTudo(){document.getElementById('area-veiculos').style.display='none';document.getElementById('area-vestir').style.display='none';document.getElementById('feed').style.display='';}
+        window.toggleMenu=()=>{document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('active');};
+        window.voltarHome=()=>{
+            if(document.getElementById('sidebar').classList.contains('open'))toggleMenu();
+            esconderTudo();document.getElementById('area-perfil').classList.add('hidden');document.getElementById('caixa-post').classList.remove('hidden');
+            resetNav();document.getElementById('btn-nav-feed').style.borderColor='#ff0000';document.getElementById('btn-nav-feed').style.color='#ff0000';
+            carregarFeed();window.scrollTo({top:0,behavior:'smooth'});
+        };
+        window.abrirVeiculos=()=>{
+            if(document.getElementById('sidebar').classList.contains('open'))toggleMenu();
+            window.open('https://sites.google.com/view/awdsqwe/in%C3%ADcio','_blank');
+            resetNav();
+            document.getElementById('btn-nav-veiculos').style.borderColor='#ff0000';
+            document.getElementById('btn-nav-veiculos').style.color='#ff0000';
+        };
+        window.abrirVestir=()=>{
+            if(document.getElementById('sidebar').classList.contains('open'))toggleMenu();
+            document.getElementById('area-perfil').classList.add('hidden');document.getElementById('caixa-post').classList.add('hidden');document.getElementById('feed').style.display='none';document.getElementById('area-veiculos').style.display='none';document.getElementById('area-vestir').style.display='block';
+            resetNav();document.getElementById('btn-nav-vestir').style.borderColor='#ff0000';document.getElementById('btn-nav-vestir').style.color='#ff0000';window.scrollTo({top:0,behavior:'smooth'});
+        };
+        window.abrirChofer=()=>{
+            if(document.getElementById('sidebar').classList.contains('open'))toggleMenu();
+            window.open('https://sadministrador.github.io/chofer10203040/index10203040.html','_blank');
+            resetNav();
+            document.getElementById('btn-nav-lojas').style.borderColor='#ff0000';
+            document.getElementById('btn-nav-lojas').style.color='#ff0000';
+        };
+        window.abrirMonitorAnuncios=()=>{window.open(MONITOR_URL,'_blank');};
+
+        function carregarAnunciosAtivos(){
+            return new Promise((resolve)=>{
+                const q=query(collection(fsdb,"anunciosLojas"),where("status","==","ativo"));
+                let primeiraVez=true;
+                onSnapshot(q,snap=>{anunciosAtivos=[];snap.forEach(d=>anunciosAtivos.push({id:d.id,...d.data()}));if(primeiraVez){primeiraVez=false;resolve();}else{carregarFeed();}});
+            });
+        }
+
+        function gerarHtmlAnuncio(ad, slideshowsPendentes) {
+            if(!ad)return"";
+            const corFundo=ad.corFundo||'#1a0a2e',corTexto=ad.corTexto||'#ffffff',corDescFundo=ad.corDescFundo||'transparent',corDescTexto=ad.corDescTexto||corTexto;
+            const tipoMidia=ad.tipoMidia||'unico',imagensSlide=ad.imagensSlide&&ad.imagensSlide.length>0?ad.imagensSlide:null;
+            const bannerUrl=ad.imagemUrl||ad.imagem||"",isVideo=ad.isVideo||false,intervalo=ad.intervaloSlide||3000,uid='ad_'+ad.id,somId=ad.somAnuncio||'nenhum';
+            const logoHtml=ad.logoUrl?`<img src="${ad.logoUrl}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.4);flex-shrink:0;">`:`<div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;flex-shrink:0;color:${corTexto};">${(ad.loja||'?')[0]}</div>`;
+            let bannerHtml='';
+            if(tipoMidia==='slide'&&imagensSlide&&imagensSlide.length>1){
+                const dots=imagensSlide.map((_,i)=>`<div class="ad-slide-dot ${i===0?'active':''}" onclick="_adGoSlide('${uid}',${i})"></div>`).join('');
+                const imgs=imagensSlide.map(src=>`<img src="${src}" style="width:100%;height:320px;flex-shrink:0;object-fit:cover;">`).join('');
+                bannerHtml=`<div class="ad-slideshow" style="height:320px;"><div class="ad-slideshow-track" id="adtrack-${uid}" style="height:320px;">${imgs}</div><button class="ad-slide-nav prev" onclick="_adPrev('${uid}')">&#8249;</button><button class="ad-slide-nav next" onclick="_adNext('${uid}')">&#8250;</button><div class="ad-slide-dots" id="addots-${uid}">${dots}</div></div>`;
+                if(slideshowsPendentes)slideshowsPendentes.push({uid,srcs:imagensSlide,intervalo});
+            }else if(tipoMidia==='slide'&&imagensSlide&&imagensSlide.length===1){
+                bannerHtml=`<img src="${imagensSlide[0]}" style="width:100%;height:320px;object-fit:cover;display:block;" alt="">`;
+            }else if(isVideo&&bannerUrl){
+                bannerHtml=`<video src="${bannerUrl}" autoplay muted loop playsinline preload="auto" data-ad-video="true" style="width:100%;height:320px;object-fit:cover;display:block;"></video>`;
+            }else if(bannerUrl){
+                bannerHtml=`<img src="${bannerUrl}" style="width:100%;height:320px;object-fit:cover;display:block;" alt="">`;
+            }
+            const descHtml=ad.descricao?`<div style="font-size:15px;font-weight:700;color:${corDescTexto};background:${corDescFundo};line-height:1.5;border-radius:6px;padding:${corDescFundo==='transparent'?'0':'8px 10px'};margin-top:6px;">${ad.descricao}</div>`:'';
+            const linkHtml=ad.link?`<a href="${ad.link}" target="_blank" rel="noopener" style="display:block;width:100%;background:rgba(255,255,255,0.18);color:${corTexto};font-weight:900;font-size:15px;padding:13px;border-radius:10px;text-align:center;text-decoration:none;text-transform:uppercase;margin-top:12px;">${ad.cta||'SAIBA MAIS'}</a>`:'';
+            return`<div data-ad-card="true" data-som="${somId}" style="background:${corFundo};border-radius:16px;border:2px solid rgba(255,255,255,0.12);margin-bottom:24px;overflow:hidden;">
+<div style="padding:8px 12px 0 12px;"><span style="background:rgba(255,255,255,0.15);color:${corTexto};font-size:12px;font-weight:900;padding:4px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:2px;display:inline-block;">Patrocinador</span></div>
+${bannerHtml}<div style="padding:16px;"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">${logoHtml}<span style="font-size:13px;font-weight:900;color:${corTexto};text-transform:uppercase;opacity:0.8;">${ad.loja||''}</span></div>
+<div style="font-size:20px;font-weight:900;color:${corTexto};text-transform:uppercase;margin-bottom:4px;">${ad.titulo||''}</div>${descHtml}${linkHtml}</div></div>`;
+        }
+
+        function aplicarRankingCoracoes(){
+            const allBtns=document.querySelectorAll('.btn-curtir[data-post-id]');
+            const arr=[];allBtns.forEach(btn=>{const count=parseInt(btn.querySelector('.num-curtidas')?.textContent||0)||0;arr.push({btn,count});});
+            arr.sort((a,b)=>b.count-a.count);
+            arr.forEach(item=>{item.btn.style.color='#ff0000';const id=item.btn.getAttribute('data-post-id');const slot=document.getElementById('badge-slot-'+id);if(slot)slot.innerHTML='';});
+            const medalhas=[{cls:'heart-badge-ouro',emoji:'🥇',valor:'R$ 50'},{cls:'heart-badge-prata',emoji:'🥈',valor:'R$ 20'},{cls:'heart-badge-bronze',emoji:'🥉',valor:'R$ 10'}];
+            arr.slice(0,3).forEach((item,rank)=>{
+                if(item.count<=0)return;const m=medalhas[rank];const id=item.btn.getAttribute('data-post-id');const slot=document.getElementById('badge-slot-'+id);if(!slot)return;
+                const badge=document.createElement('span');badge.className=`heart-badge ${m.cls}`;badge.innerHTML=`<span class="badge-shine"></span><span class="badge-emoji">${m.emoji}</span><span class="badge-valor">${m.valor}</span>`;slot.appendChild(badge);
+            });
+        }
+
+        function carregarFeed(filtroNome=null){
+            let q=query(collection(fsdb,"posts"),orderBy("data","desc"));
+            if(filtroNome)q=query(collection(fsdb,"posts"),where("nome","==",filtroNome),orderBy("data","desc"));
+            if(unsubFeed)unsubFeed();
+            unsubFeed=onSnapshot(q,snap=>{
+                const f=document.getElementById('feed');
+                const postsValidos=[];
+                snap.forEach(d=>{const p=d.data();if(p.tipo!=='classificado')postsValidos.push({id:d.id,dados:p});});
+                let htmlCompleto='';const slideshowsPendentes=[];let idxAd=0;
+                postsValidos.forEach((item,i)=>{
+                    const{id,dados:p}=item;
+                    let midiaHtml="";
+                    if(p.midia){
+                        if(p.tipo==='video'){midiaHtml=`<div class="video-wrapper"><div class="video-skeleton"><svg width="64" height="64" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg></div><video src="${p.midia}" loop playsinline preload="none" class="video-feed" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:2;"></video></div>`;}
+                        else{midiaHtml=`<img src="${p.midia}" loading="lazy" style="width:100%;display:block;object-fit:cover;" class="mt-2">`;}
+                    }
+                    const comentsHtml=(p.comentarios||[]).map(c=>`<div class="text-xs bg-black/30 p-2 rounded mb-1"><b class="text-red-500">${c.autor}:</b> ${c.texto}</div>`).join("");
+                    const fotoUsuario=p.foto?`<img src="${p.foto}" class="w-11 h-11 rounded-full object-cover border-2 border-red-600" style="flex-shrink:0;" onerror="this.style.display='none'">`:`<div style="width:44px;height:44px;border-radius:50%;background:#ff0000;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;flex-shrink:0;">${(p.nome||'?')[0]}</div>`;
+                    htmlCompleto+=`<div class="post-card"><div class="post-card-header"><div class="post-card-header-inner"><div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">${fotoUsuario}<span style="font-weight:900;color:#ff0000;font-size:11px;text-transform:uppercase;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.nome||''}</span></div><div class="post-card-header-badge" id="badge-slot-${id}"></div><div onclick="curtirPost('${id}',this,event)" class="btn-curtir" data-post-id="${id}">❤️ <span class="num-curtidas">${p.curtidas||0}</span></div></div></div>${p.texto?`<p class="post-card-texto">${p.texto}</p>`:''}${midiaHtml}<div class="post-card-footer"><div class="max-h-32 overflow-y-auto mb-3">${comentsHtml}</div><div class="flex gap-2"><input id="input-coment-${id}" placeholder="Escreva algo..." class="flex-1 comment-box p-2 text-sm outline-none focus:border-red-600"><button onclick="salvarComentario('${id}')" class="bg-red-600 px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-red-700 transition-all">Salvar</button></div></div></div>`;
+                    if((i+1)%4===0&&anunciosAtivos.length>0){htmlCompleto+=gerarHtmlAnuncio(anunciosAtivos[idxAd%anunciosAtivos.length],slideshowsPendentes);idxAd++;}
+                });
+                f.innerHTML=htmlCompleto;
+                slideshowsPendentes.forEach(({uid,srcs,intervalo})=>iniciarSlideshowAd(uid,srcs,intervalo));
+                f.querySelectorAll('video.video-feed').forEach(v=>{registrarVideo(v);});
+                f.querySelectorAll('video[data-ad-video="true"]').forEach(v=>{v.muted=true;v.setAttribute('muted','');v.setAttribute('playsinline','');v.load();adVideoObserver.observe(v);});
+                registrarObserverSomAnuncios();
+                aplicarRankingCoracoes();
+            });
+        }
+
+        function carregarUsuariosMenu(){
+            onSnapshot(collection(fsdb,"usuariosAprovados"),snap=>{
+                const lista=document.getElementById('lista-usuarios-menu');lista.innerHTML="";
+                snap.forEach(d=>{const st=d.data().status;if(st!=="aprovado"&&st!=="ativo")return;lista.innerHTML+=`<div onclick="verPerfil('${d.id}')" class="flex items-center gap-3 p-3 hover:bg-red-900 rounded-lg cursor-pointer"><img src="${d.data().foto}" class="w-10 h-10 rounded-full object-cover border-2 border-red-600" onerror="this.style.opacity='0.3'"><span class="font-bold text-xs uppercase">${d.data().nome}</span></div>`;});
+            });
+        }
+
+        window.verPerfil=async(idPerfil)=>{
+            if(document.getElementById('sidebar').classList.contains('open'))toggleMenu();
+            const docSnap=await getDoc(doc(fsdb,"usuariosAprovados",idPerfil));
+            if(docSnap.exists()){
+                const p=docSnap.data();esconderTudo();document.getElementById('area-perfil').classList.remove('hidden');document.getElementById('caixa-post').classList.add('hidden');
+                document.getElementById('nome-perfil-view').innerText=p.nome;document.getElementById('img-capa-view').src=p.capa||"https://images.unsplash.com/photo-1557683316-973673baf926";
+                idPerfil===idLogado?document.getElementById('label-capa').classList.remove('hidden'):document.getElementById('label-capa').classList.add('hidden');
+                carregarFeed(p.nome);window.scrollTo({top:0,behavior:'smooth'});
+            }
+        };
+
+        window.previaCapa=(input)=>{
+            const file=input.files[0];if(!file)return;arquivoCapaPendente=file;
+            const reader=new FileReader();reader.onload=e=>{document.getElementById('img-capa-view').src=e.target.result;document.getElementById('btn-confirmar-capa').classList.remove('hidden');};reader.readAsDataURL(file);
+        };
+
+        window.confirmarUploadCapa=async()=>{
+            const btn=document.getElementById('btn-confirmar-capa');btn.innerText="SALVANDO...";
+            try{
+                const url=await uploadCloudinary(arquivoCapaPendente,"sx_capas");
+                await updateDoc(doc(fsdb,"usuariosAprovados",idLogado),{capa:url});
+                alert("SUCESSO! SUA CAPA AGORA É VISÍVEL PARA TODOS.");btn.classList.add('hidden');btn.innerText="✅ SALVAR PARA TODOS";
+            }catch(err){alert("Erro ao salvar capa: "+err.message);}
+        };
+
+        window.postar=async()=>{
+            const txt=document.getElementById('txt').value;
+            const file=document.getElementById('midia').files[0];
+            const btn=document.getElementById('btn-post');
+            if(!txt&&!file)return alert("Escreva algo ou adicione uma mídia!");
+            btn.disabled=true;btn.innerText="PUBLICANDO...";
+            setProgress('progress-post','progress-post-fill',0,!!file);
+            let url="",tipo="";
+            try{
+                if(file){
+                    const isVideo=file.type.startsWith("video/");tipo=isVideo?'video':'foto';
+                    btn.innerText=isVideo?"ENVIANDO VÍDEO... 0%":"ENVIANDO IMAGEM... 0%";
+                    url=await uploadCloudinary(file,"sx_posts",(pct)=>{btn.innerText=(isVideo?"ENVIANDO VÍDEO... ":"ENVIANDO IMAGEM... ")+pct+"%";setProgress('progress-post','progress-post-fill',pct,true);});
+                }
+                btn.innerText="SALVANDO POST...";
+                await addDoc(collection(fsdb,"posts"),{nome:userLogado.nome,foto:userLogado.foto,texto:txt,midia:url,tipo:tipo,data:new Date(),curtidas:0,comentarios:[]});
+                document.getElementById('txt').value="";document.getElementById('midia').value="";document.getElementById('file-name').innerText="✨ ADICIONAR MÍDIA INCRÍVEL";
+                setProgress('progress-post','progress-post-fill',0,false);btn.disabled=false;btn.innerText="Publicar";
+            }catch(e){alert("Erro ao publicar: "+e.message);btn.disabled=false;btn.innerText="Publicar";setProgress('progress-post','progress-post-fill',0,false);}
+        };
+
+        function dispararCoracoes(btn){
+            const rect=btn.getBoundingClientRect();const cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
+            for(let i=0;i<8;i++){
+                const el=document.createElement('span');el.className='heart-pop';el.textContent='❤️';
+                const xInicio=(Math.random()-0.5)*30,xFim=(Math.random()-0.5)*80,r1=(Math.random()-0.5)*30,r2=(Math.random()-0.5)*60,size=0.9+Math.random()*0.9;
+                el.style.cssText=`left:${cx+xInicio}px;top:${cy}px;font-size:${size}rem;--x:${xInicio}px;--x2:${xFim}px;--r:${r1}deg;--r2:${r2}deg;animation-delay:${i*60}ms;`;
+                document.body.appendChild(el);el.addEventListener('animationend',()=>el.remove());
+            }
+        }
+
+        window.curtirPost=async(id,btn,evento)=>{
+            if(evento)evento.stopPropagation();if(curtidasNestaSessao.has(id))return;dispararCoracoes(btn);
+            const refDoc=doc(fsdb,"posts",id),snap=await getDoc(refDoc),total=(snap.data().curtidas||0)+1;
+            await updateDoc(refDoc,{curtidas:total});curtidasNestaSessao.add(id);
+            const numEl=btn.querySelector('.num-curtidas');if(numEl)numEl.textContent=total;aplicarRankingCoracoes();
+        };
+
+        window.salvarComentario=async(id)=>{const input=document.getElementById(`input-coment-${id}`),texto=input.value.trim();if(!texto)return;await updateDoc(doc(fsdb,"posts",id),{comentarios:arrayUnion({autor:userLogado.nome,texto,data:new Date().toLocaleString()})});input.value="";};
+
+        // ── CLASSIFICADOS ──
+        function clsIniciar(){
+            clsUpdateStatus('✅ CONECTADO! Pode anunciar.','ok');document.getElementById('btnNovo').disabled=false;
+            const q=query(collection(fsdb,'posts'),where('publicado','==',true),where('tipo','==','classificado'),orderBy('data','desc'));
+            const renderLista=(snap,lista)=>{
+                lista.innerHTML=snap.empty?'<p style="text-align:center;color:#ccc;padding:20px;">Nenhum anúncio publicado ainda...</p>':'';
+                snap.forEach(ds=>{
+                    const d=ds.data(),midias=d.midia||[];const nomeVeiculo=(d.nome||'')+(d.ano?' '+d.ano:'')+(d.categoria?' ('+d.categoria+')':'');
+                    const msgVeiculo=encodeURIComponent('Olá! Vi seu anúncio no *SX Classificados*!\n*Veículo:* '+nomeVeiculo+'\nO veículo ainda está disponível?');
+                    lista.innerHTML+=`<div class="anuncio-cls"><span class="badge-publicado">✅ PUBLICADO</span><h3>🚗 ${d.nome||''} (${d.ano||''}) — ${d.categoria||''}</h3><p>${d.descricao||''}</p><p><b>📍 ${d.bairro||''}, ${d.estado||''}</b> | <b>💰 R$ ${Number(d.preco||0).toLocaleString('pt-br')}</b></p><a href="https://wa.me/55${d.whatsapp||''}?text=${msgVeiculo}" target="_blank"><button class="cls-btn" style="background:#25D366;padding:10px 20px;margin-top:10px;">📱 WhatsApp</button></a><div class="midia-grid-cls">${midias.map(url=>{const isVid=url.includes('.mp4')||url.includes('.mov')||url.includes('.webm')||url.includes('video');return isVid?`<video src="${url}" loop playsinline preload="none" style="max-width:140px;height:110px;border-radius:8px;cursor:pointer;" onclick="this.muted=!this.muted;this.paused?this.play():this.pause()"></video>`:`<img src="${url}" loading="lazy" onclick="clsAbrirGaleria('${url}')" title="Clique para ampliar">`;}).join('')}</div></div>`;
+                });
+            };
+            onSnapshot(q,snap=>{renderLista(snap,document.getElementById('cls-listaAnuncios'));},()=>{onSnapshot(query(collection(fsdb,'posts'),where('publicado','==',true),where('tipo','==','classificado')),snap2=>{renderLista(snap2,document.getElementById('cls-listaAnuncios'));});});
+        }
+        function clsUpdateStatus(msg,type){const el=document.getElementById('cls-status');el.textContent=msg;el.className='cls-status cls-status-'+(type||'ok');}
+        window.clsAbrirGaleria=url=>{const modal=document.createElement('div');modal.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:9999;display:flex;align-items:center;justify-content:center;';modal.innerHTML=`<img src="${url}" style="max-width:90%;max-height:90%;border-radius:10px;">`;modal.onclick=()=>document.body.removeChild(modal);document.body.appendChild(modal);};
+        window.clsAbrirForm=()=>{document.getElementById('cls-formulario').style.display='block';document.getElementById('cls-formulario').scrollIntoView({behavior:'smooth'});};
+        document.getElementById('cls-midia').addEventListener('change',e=>{const novos=Array.from(e.target.files);if(clsArquivos.length+novos.length>6)return alert('Máximo 6 arquivos!');clsArquivos=[...clsArquivos,...novos];clsShowPreview();document.getElementById('cls-contador').textContent=clsArquivos.length+'/6 arquivos';document.getElementById('cls-btnPublicar').disabled=false;e.target.value='';});
+        function clsShowPreview(){const preview=document.getElementById('cls-preview');preview.innerHTML='';clsArquivos.forEach((file,i)=>{const reader=new FileReader();reader.onload=e=>{const isVideo=file.type.startsWith('video/');preview.innerHTML+=`<div style="position:relative;">${isVideo?`<video src="${e.target.result}" style="width:100px;height:80px;object-fit:cover;border-radius:8px;"></video>`:`<img src="${e.target.result}" style="width:100px;height:80px;object-fit:cover;border-radius:8px;">`}<button onclick="clsRemoverArquivo(${i})" style="position:absolute;top:-5px;right:-5px;background:red;color:white;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;">×</button></div>`;};reader.readAsDataURL(file);});}
+        window.clsRemoverArquivo=index=>{clsArquivos.splice(index,1);clsShowPreview();document.getElementById('cls-contador').textContent=clsArquivos.length+'/6 arquivos';document.getElementById('cls-btnPublicar').disabled=clsArquivos.length===0;};
+
+        window.clsAnunciar=async()=>{
+            if(clsIsSubmitting)return;clsIsSubmitting=true;
+            const btn=document.getElementById('cls-btnPublicar');btn.textContent='⏳ Enviando...';btn.disabled=true;
+            const dados={categoria:document.getElementById('cls-categoria').value,nome:document.getElementById('cls-nome').value.trim(),ano:document.getElementById('cls-ano').value,bairro:document.getElementById('cls-bairro').value.trim(),estado:document.getElementById('cls-estado').value.trim(),preco:document.getElementById('cls-preco').value,whatsapp:document.getElementById('cls-whatsapp').value.trim(),descricao:document.getElementById('cls-descricao').value.trim()};
+            if(!dados.categoria||!dados.nome||clsArquivos.length===0){alert('❌ Preencha categoria, nome e adicione pelo menos 1 foto!');clsIsSubmitting=false;btn.textContent='🚀 PUBLICAR ANÚNCIO';btn.disabled=false;return;}
+            try{
+                setProgress('progress-cls','progress-cls-fill',0,true);
+                const urls=[];
+                for(let i=0;i<clsArquivos.length;i++){
+                    const file=clsArquivos[i];const progBase=Math.round((i/clsArquivos.length)*100);btn.textContent=`⏳ Enviando ${i+1}/${clsArquivos.length}...`;
+                    const url=await uploadCloudinary(file,"sx_veiculos",(pct)=>{setProgress('progress-cls','progress-cls-fill',progBase+Math.round(pct/clsArquivos.length),true);btn.textContent=`⏳ Arquivo ${i+1}/${clsArquivos.length}: ${pct}%`;});
+                    urls.push(url);
+                }
+                setProgress('progress-cls','progress-cls-fill',100,true);btn.textContent='⏳ Salvando anúncio...';
+                await addDoc(collection(fsdb,'posts'),{...dados,midia:urls,tipo:'classificado',publicado:false,data:serverTimestamp()});
+                setProgress('progress-cls','progress-cls-fill',0,false);
+                alert('✅ ANÚNCIO ENVIADO! Aguarde aprovação.');clsFecharForm();
+            }catch(e){alert('❌ Erro: '+e.message);setProgress('progress-cls','progress-cls-fill',0,false);}
+            finally{clsIsSubmitting=false;btn.textContent='🚀 PUBLICAR ANÚNCIO';btn.disabled=false;}
+        };
+        function clsFecharForm(){document.getElementById('cls-formulario').style.display='none';['cls-nome','cls-ano','cls-bairro','cls-estado','cls-preco','cls-whatsapp','cls-descricao'].forEach(id=>document.getElementById(id).value='');document.getElementById('cls-categoria').value='';clsArquivos=[];document.getElementById('cls-preview').innerHTML='';document.getElementById('cls-contador').textContent='0/6 arquivos';document.getElementById('cls-btnPublicar').disabled=true;clsIsSubmitting=false;}
+
+        inicializar();
+    </script>
+
+    <script>
+    (function() {
+        function gerarIcone(cb) {
+            var c = document.createElement('canvas'); c.width = 512; c.height = 512;
+            var ctx = c.getContext('2d');
+            ctx.fillStyle = '#050a14'; ctx.beginPath(); ctx.roundRect(0, 0, 512, 512, 80); ctx.fill();
+            ctx.strokeStyle = '#ff0000'; ctx.lineWidth = 18; ctx.beginPath(); ctx.roundRect(9, 9, 494, 494, 74); ctx.stroke();
+            ctx.fillStyle = '#ff0000'; ctx.font = 'bold 320px Arial Black, Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('S', 145, 270);
+            ctx.fillStyle = '#ffffff'; ctx.fillText('X', 368, 270); cb(c.toDataURL('image/png'));
+        }
+        gerarIcone(function(ICON) {
+            document.getElementById('apple-touch-icon').href = ICON;
+            var manifest = { name:"SX Network",short_name:"SX",description:"SX - Network Social",start_url:"./",display:"standalone",background_color:"#050a14",theme_color:"#ff0000",orientation:"portrait",icons:[{src:ICON,sizes:"192x192",type:"image/png",purpose:"any maskable"},{src:ICON,sizes:"512x512",type:"image/png",purpose:"any maskable"}] };
+            var manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+            document.getElementById('pwa-manifest').href = URL.createObjectURL(manifestBlob);
+            if ('serviceWorker' in navigator) {
+                var sw = ['self.addEventListener("install",function(e){self.skipWaiting();});','self.addEventListener("activate",function(e){e.waitUntil(clients.claim());});','self.addEventListener("fetch",function(e){});'].join('');
+                navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'})),{scope:'./'}).catch(function(){});
+            }
+            var dp = null; var jaInstalou = localStorage.getItem('sx_pwa_instalado'); if (jaInstalou) return;
+            var style = document.createElement('style'); style.textContent = '@keyframes sxp{0%,100%{box-shadow:0 4px 20px rgba(255,0,0,.5)}50%{box-shadow:0 6px 35px rgba(255,0,0,.9)}}'; document.head.appendChild(style);
+            var miniCanvas = document.createElement('canvas'); miniCanvas.width = 36; miniCanvas.height = 36;
+            var mctx = miniCanvas.getContext('2d'); mctx.fillStyle = '#050a14'; mctx.beginPath(); mctx.roundRect(0,0,36,36,6); mctx.fill(); mctx.strokeStyle='#ff0000'; mctx.lineWidth=2; mctx.beginPath(); mctx.roundRect(1,1,34,34,5); mctx.stroke();
+            mctx.font='bold 20px Arial Black,Arial'; mctx.textAlign='center'; mctx.textBaseline='middle'; mctx.fillStyle='#ff0000'; mctx.fillText('S',10,19); mctx.fillStyle='#ffffff'; mctx.fillText('X',26,19);
+            var miniIcon = miniCanvas.toDataURL('image/png');
+            var b = document.createElement('button'); b.id = 'btn-pwa-sx';
+            b.innerHTML = '<img src="'+miniIcon+'" style="width:28px;height:28px;border-radius:5px;vertical-align:middle;margin-right:8px;">INSTALAR APP SX';
+            b.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#000000;color:#fff;font-size:14px;font-weight:900;padding:12px 24px;border-radius:50px;box-shadow:0 4px 20px rgba(255,0,0,.5);cursor:pointer;z-index:9999;border:2px solid rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:1px;white-space:nowrap;animation:sxp 2s infinite;display:flex;align-items:center;';
+            b.onclick = function() { if (dp) { dp.prompt(); dp.userChoice.then(function(r){if(r.outcome==='accepted'){localStorage.setItem('sx_pwa_instalado','1');b.remove();}dp=null;}); } else { alert('Para instalar:\n\nAndroid: toque nos 3 pontinhos do Chrome → "Adicionar à tela inicial"\n\niOS Safari: toque em Compartilhar → "Adicionar à Tela de Início"'); } };
+            document.body.appendChild(b);
+            window.addEventListener('beforeinstallprompt', function(e){e.preventDefault();dp=e;});
+            window.addEventListener('appinstalled', function(){localStorage.setItem('sx_pwa_instalado','1');b.remove();});
+        });
+    })();
+    </script>
+</body>
+</html>
