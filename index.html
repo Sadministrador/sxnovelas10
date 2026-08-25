@@ -289,12 +289,20 @@
             <div class="cls-header">NOVELAS <span style="color:red;">S</span><span style="color:white;">X</span></div>
             <div class="cls-container">
                 <div id="novela-painel" style="max-width:600px;margin:0 auto;">
-                    <label class="cls-label">🔗 Link da Novela:</label>
-                    <input type="text" id="novela-link-input" class="cls-input" placeholder="Cole aqui o link...">
-                    <label class="cls-label">⏱️ Ficar disponível por quantas horas?</label>
-                    <input type="number" id="novela-horas-input" class="cls-input" placeholder="Ex: 12" min="1" value="12">
-                    <button onclick="novelaSalvarLink()" class="cls-btn" style="width:100%;margin-top:10px;">💾 SALVAR LINK</button>
-                    <div id="novela-status" style="display:none;" class="cls-status cls-status-ok"></div>
+                    <div id="novela-senha-gate">
+                        <label class="cls-label">🔒 Senha de Administrador:</label>
+                        <input type="password" id="novela-senha-input" class="cls-input" placeholder="Digite a senha" onkeydown="if(event.key==='Enter')novelaVerificarSenha()">
+                        <button onclick="novelaVerificarSenha()" class="cls-btn" style="width:100%;margin-top:10px;">🔓 DESBLOQUEAR</button>
+                        <div id="novela-senha-erro" style="display:none;color:#ff6060;font-weight:bold;text-align:center;margin-top:10px;">❌ Senha incorreta</div>
+                    </div>
+                    <div id="novela-campos-link" style="display:none;">
+                        <label class="cls-label">🔗 Link da Novela:</label>
+                        <input type="text" id="novela-link-input" class="cls-input" placeholder="Cole aqui o link...">
+                        <label class="cls-label">⏱️ Ficar disponível por quantas horas?</label>
+                        <input type="number" id="novela-horas-input" class="cls-input" placeholder="Ex: 12" min="1" value="12">
+                        <button onclick="novelaSalvarLink()" class="cls-btn" style="width:100%;margin-top:10px;">💾 SALVAR LINK</button>
+                        <div id="novela-status" style="display:none;" class="cls-status cls-status-ok"></div>
+                    </div>
                 </div>
 
                 <div id="novela-atual" style="max-width:600px;margin:24px auto 0 auto;display:none;">
@@ -453,6 +461,36 @@
         let novelaDadosAtual = null;
         let unsubNovela = null;
         let novelaIntervaloExibicao = null;
+        const NOVELA_SENHA = "102030Aa";
+        let novelaSenhaValidada = false;
+        let novelaPainelEstavaAtivo = null;
+
+        function novelaResetarGate() {
+            const gate = document.getElementById('novela-senha-gate');
+            const campos = document.getElementById('novela-campos-link');
+            const senhaInput = document.getElementById('novela-senha-input');
+            const erro = document.getElementById('novela-senha-erro');
+            if (gate) gate.style.display = 'block';
+            if (campos) campos.style.display = 'none';
+            if (senhaInput) senhaInput.value = '';
+            if (erro) erro.style.display = 'none';
+        }
+
+        window.novelaVerificarSenha = () => {
+            const senhaInput = document.getElementById('novela-senha-input');
+            const erro = document.getElementById('novela-senha-erro');
+            const gate = document.getElementById('novela-senha-gate');
+            const campos = document.getElementById('novela-campos-link');
+            if (senhaInput.value === NOVELA_SENHA) {
+                novelaSenhaValidada = true;
+                gate.style.display = 'none';
+                campos.style.display = 'block';
+                erro.style.display = 'none';
+            } else {
+                erro.style.display = 'block';
+                senhaInput.value = '';
+            }
+        };
 
         function novelaAtualizarExibicao() {
             const blocoAtual = document.getElementById('novela-atual');
@@ -465,6 +503,13 @@
                 const duracaoMs = (parseFloat(dados.horas) || 12) * 60 * 60 * 1000;
                 ativo = (agora - dados.ts) < duracaoMs;
             }
+            // Quando o vídeo em exibição expira e o painel volta a aparecer,
+            // a senha precisa ser digitada novamente para trocar o link.
+            if (novelaPainelEstavaAtivo === true && ativo === false) {
+                novelaSenhaValidada = false;
+                novelaResetarGate();
+            }
+            novelaPainelEstavaAtivo = ativo;
             blocoAtual.style.display = ativo ? 'block' : 'none';
             painel.style.display = ativo ? 'none' : 'block';
         }
@@ -480,6 +525,7 @@
         }
 
         window.novelaSalvarLink = async () => {
+            if (!novelaSenhaValidada) { alert("Digite a senha antes de salvar o link!"); return; }
             const input = document.getElementById('novela-link-input');
             const horasInput = document.getElementById('novela-horas-input');
             const link = input.value.trim();
