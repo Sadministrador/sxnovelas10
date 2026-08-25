@@ -299,9 +299,7 @@
 
                 <div id="novela-atual" style="max-width:600px;margin:24px auto 0 auto;display:none;">
                     <div class="anuncio-cls">
-                        <span class="badge-publicado">✅ NOVELA DISPONÍVEL</span>
-                        <button onclick="abrirNovelaPlay()" class="cls-btn" style="width:100%;margin-top:10px;font-size:16px;">▶️ ASSISTIR AGORA</button>
-                        <p id="novela-expira-em" style="color:#aaa;font-size:13px;margin-top:10px;text-align:center;"></p>
+                        <button onclick="abrirNovelaPlay()" class="cls-btn" style="width:100%;margin-top:10px;font-size:16px;">▶️ ASSISTIR NOVELAS</button>
                     </div>
                 </div>
             </div>
@@ -423,11 +421,6 @@
         // ══════════════════════════════════════════════════════
         // ── NOVELAS — link salvo na nuvem, disponível para todos os dispositivos ─────
         // ══════════════════════════════════════════════════════
-        function novelaFormatarRestante(ms) {
-            const totalMin = Math.max(0, Math.floor(ms / 60000));
-            const h = Math.floor(totalMin / 60), m = totalMin % 60;
-            return h > 0 ? `${h}h ${m}min restantes` : `${m}min restantes`;
-        }
     </script>
 
     <script type="module">
@@ -463,20 +456,17 @@
 
         function novelaAtualizarExibicao() {
             const blocoAtual = document.getElementById('novela-atual');
-            if (!blocoAtual) return;
+            const painel = document.getElementById('novela-painel');
+            if (!blocoAtual || !painel) return;
             const dados = novelaDadosAtual;
             const agora = Date.now();
             let ativo = false;
             if (dados && dados.link && dados.ts) {
                 const duracaoMs = (parseFloat(dados.horas) || 12) * 60 * 60 * 1000;
                 ativo = (agora - dados.ts) < duracaoMs;
-                if (ativo) {
-                    const restante = duracaoMs - (agora - dados.ts);
-                    const expEl = document.getElementById('novela-expira-em');
-                    if (expEl) expEl.innerText = "⏳ " + novelaFormatarRestante(restante);
-                }
             }
             blocoAtual.style.display = ativo ? 'block' : 'none';
+            painel.style.display = ativo ? 'none' : 'block';
         }
 
         function novelaIniciarListener() {
